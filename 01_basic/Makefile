@@ -25,7 +25,7 @@ $(ROUTED_JSON): $(SYNTH_JSON) $(CST)
 $(BITSTREAM): $(ROUTED_JSON)
 	$(DOCKER_CMD) gowin_pack -d $(FAMILY) -o $(BITSTREAM) $(ROUTED_JSON)
 
-flash: $(BITSTREAM)
+flash:
 	$(DOCKER_CMD) openFPGALoader -b tangnano20k $(BITSTREAM)
 
 clean:
