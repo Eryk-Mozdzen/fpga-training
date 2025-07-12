@@ -1,9 +1,13 @@
+DOCKER_IMG = emozdzen/fpga-utils
+DOCKER_CMD = docker run --rm --privileged -v $(PWD):/project -w /project $(DOCKER_IMG)
+
 TOP     = project
+FAMILY  = GW2A-18C
 DEVICE  = GW2AR-LV18QN88C8/I7
 VERILOG = src/project.v
-CST     = project.cst
+CST     = tangnano20k.cst
 
-SYNTH_JSON   = build/$(TOP).json
+SYNTH_JSON   = build/$(TOP)_synth.json
 ROUTED_JSON  = build/$(TOP)_pnr.json
 BITSTREAM    = build/$(TOP).fs
 
@@ -13,16 +17,16 @@ build:
 	mkdir -p build
 
 $(SYNTH_JSON): build $(VERILOG)
-	yosys -p "read_verilog $(VERILOG); synth_gowin -top $(TOP) -json $(SYNTH_JSON)"
+	$(DOCKER_CMD) yosys -p "read_verilog $(VERILOG); synth_gowin -top $(TOP) -json $(SYNTH_JSON) -family gw2a"
 
 $(ROUTED_JSON): $(SYNTH_JSON) $(CST)
-	nextpnr-gowin --json $(SYNTH_JSON) --write $(ROUTED_JSON) --device $(DEVICE) --cst $(CST)
+	$(DOCKER_CMD) nextpnr-himbaechel --json $(SYNTH_JSON) --write $(ROUTED_JSON) --device $(DEVICE) --vopt family=$(FAMILY) --vopt cst=$(CST)
 
 $(BITSTREAM): $(ROUTED_JSON)
-	gowin_pack -d $(DEVICE) -o $(BITSTREAM) $(ROUTED_JSON)
+	$(DOCKER_CMD) gowin_pack -d $(FAMILY) -o $(BITSTREAM) $(ROUTED_JSON)
 
 flash: $(BITSTREAM)
-	openFPGALoader -b tangnano20k $(BITSTREAM)
+	$(DOCKER_CMD) openFPGALoader -b tangnano20k $(BITSTREAM)
 
 clean:
 	rm -rf build

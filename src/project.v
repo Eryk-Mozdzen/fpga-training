@@ -1,9 +1,14 @@
 module project (
-    input wire a,
-    input wire b,
-    output wire y
+    input wire key_i,
+    input wire rst_i,
+    output wire [5:0] led
 );
 
-    assign y = a & b; // AND gate
+    assign led[0] = ~key_i;
+    assign led[1] = ~rst_i;
+    assign led[2] = ~(key_i & rst_i);
+    assign led[3] = ~(key_i | rst_i);
+    assign led[4] = 1;
+    assign led[5] = 1;
 
 endmodule
