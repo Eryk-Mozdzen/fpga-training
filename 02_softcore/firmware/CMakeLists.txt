@@ -11,7 +11,6 @@ set(TARGET ${CMAKE_PROJECT_NAME}.elf)
 add_executable(${TARGET}
     "src/startup.s"
     "src/main.c"
-    "src/countdown_timer.c"
     "src/leds.c"
     "src/uart.c"
     "src/ws2812b.c"
@@ -36,10 +35,9 @@ target_compile_options(${TARGET} PRIVATE
 
 	$<$<COMPILE_LANGUAGE:C>:
 		-O1
-		#-std=gnu11
-		#-Wall
-        #-Wextra
-        #-Wpedantic
+		-Wall
+        -Wextra
+        -Wpedantic
 
         -mno-save-restore
         -nostartfiles

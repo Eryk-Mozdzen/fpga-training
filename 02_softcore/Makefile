@@ -3,16 +3,14 @@ FAMILY  = GW2A-18C
 DEVICE  = GW2AR-LV18QN88C8/I7
 CST     = tangnano20k.cst
 VERILOG = \
-	src/countdown_timer.v \
-	src/picorv32.v \
-	src/reset.v \
+	src/top.v \
+	src/reset_ctrl.v \
+	picorv32/picorv32.v \
+	src/uart_wrap.v \
 	src/simpleuart.v \
 	src/sram.v \
 	src/sram8bit.v \
-	src/sys_parameters.v \
-	src/tang_nano_9k_leds.v \
-	src/top.v \
-	src/uart_wrap.v \
+	src/led_ctrl.v \
 	src/ws2812b_tgt.v \
 	src/ws2812b.v
 
