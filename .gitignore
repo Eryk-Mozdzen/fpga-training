@@ -1,2 +1,8 @@
 
 build
+
+.vscode
+.vscode-ctags
+
+02_softcore/src/mem_init*.ini
+02_softcore/src/sys_parameters.v

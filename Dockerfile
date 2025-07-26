@@ -37,6 +37,12 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.31.8/cmake-3.31.8
     && ./cmake-3.31.8-linux-x86_64.sh --skip-license --prefix=/usr/local \
     && rm cmake-3.31.8-linux-x86_64.sh
 
+RUN wget https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2025.07.16/riscv32-elf-ubuntu-22.04-gcc-nightly-2025.07.16-nightly.tar.xz \
+    && tar -xf riscv32-elf-ubuntu-22.04-gcc-nightly-2025.07.16-nightly.tar.xz \
+    && rm riscv32-elf-ubuntu-22.04-gcc-nightly-2025.07.16-nightly.tar.xz
+
+ENV PATH="$PATH:/riscv/bin"
+
 RUN git clone --depth 1 --branch v0.55 --recursive https://github.com/YosysHQ/yosys.git \
     && cd yosys \
     && make -j6 \
