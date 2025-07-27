@@ -23,9 +23,9 @@ module top(
     wire [3:0]  mem_wstrb;
     wire        mem_ready;
     wire        mem_inst;
-    wire        leds_sel;
-    wire        leds_ready;
-    wire [31:0] leds_data_o;
+    wire        gpio_sel;
+    wire        gpio_ready;
+    wire [31:0] gpio_data_o;
     wire        sram_sel;
     wire        sram_ready;
     wire [31:0] sram_data_o;
@@ -33,25 +33,27 @@ module top(
     wire [31:0] uart_data_o;
     wire        uart_ready;
     wire        ws2812b_sel;
+    wire [31:0] ws2812b_data_o;
     wire        ws2812b_ready;
 
-    //    SRAM 00000000 - 0001ffff
-    //    LED  80000000
-    //    UART 80000008 - 8000000f
-    // WS2812B 80000020 - 80000024
-    assign sram_sel = mem_valid && (mem_addr < MEMBYTES);
-    assign leds_sel = mem_valid && (mem_addr == 32'h80000000);
-    assign uart_sel = mem_valid && ((mem_addr & 32'hfffffff8) == 32'h80000008);
-    assign ws2812b_sel = mem_valid && (mem_addr == 32'h80000020);
+    //    SRAM 0x00000000 - 0x00003FFF
+    //    GPIO 0x80000000 - 0x80000003
+    //    UART 0x80000008 - 0x8000000F
+    // WS2812B 0x80001000 - 0x800017FF
+    assign sram_sel     = mem_valid && (mem_addr < MEMBYTES);
+    assign gpio_sel     = mem_valid && (mem_addr >= 32'h80000000) && (mem_addr <= 32'h80000003);
+    assign uart_sel     = mem_valid && (mem_addr >= 32'h80000008) && (mem_addr <= 32'h8000000F);
+    assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h80001000) && (mem_addr <= 32'h800017FF);
 
-    assign mem_ready = mem_valid & (sram_ready | leds_ready | uart_ready | ws2812b_ready);
+    assign mem_ready = mem_valid & (sram_ready | gpio_ready | uart_ready | ws2812b_ready);
 
     assign mem_rdata =
-        sram_sel ? sram_data_o :
-        leds_sel ? leds_data_o :
-        uart_sel ? uart_data_o : 32'h0;
+        sram_sel    ? sram_data_o :
+        gpio_sel    ? gpio_data_o :
+        uart_sel    ? uart_data_o :
+        ws2812b_sel ? ws2812b_data_o : 32'h0;
 
-    assign leds = ~leds_data_o[5:0];
+    assign leds = ~gpio_data_o[5:0];
 
     reset_ctrl reset_controller(
         .clk            (clk),
@@ -72,26 +74,30 @@ module top(
         .uart_ready     (uart_ready)
     );
 
-    ws2812b_tgt #(
-        .CLK_FREQ       (CLK_FREQ)
-    ) ws2812b_led(
+    ws2812b #(
+        .MAX_CASCADE_LENGTH (1)
+    ) ws2812b0(
         .clk            (clk),
         .reset_n        (reset_n),
-        .ws2812b_sel    (ws2812b_sel),
-        .we             (&mem_wstrb),
-        .wdata          ({mem_wdata[15:8], mem_wdata[23:16], mem_wdata[7:0]}),
-        .ws2812b_ready  (ws2812b_ready),
-        .to_din         (ws2812b_din)
+        .sel            (ws2812b_sel),
+        .addrxd         (mem_addr[10:0]), // why 'addr' not work here ???
+        .wstrb          (mem_wstrb),
+        .wdata          (mem_wdata),
+        .rdata          (ws2812b_data_o),
+        .ready          (ws2812b_ready),
+        .din            (ws2812b_din)
     );
 
-    led_ctrl led_controller(
+    gpio #(
+        .WIDTH          (6)
+    ) gpio0(
         .clk            (clk),
         .reset_n        (reset_n),
-        .leds_sel       (leds_sel),
-        .leds_data_i    (mem_wdata[5:0]),
-        .we             (mem_wstrb[0]),
-        .leds_ready     (leds_ready),
-        .leds_data_o    (leds_data_o)
+        .sel            (gpio_sel),
+        .wdata          (mem_wdata[5:0]),
+        .wstrb          (mem_wstrb[0]),
+        .ready          (gpio_ready),
+        .rdata          (gpio_data_o)
     );
 
     sram #(
@@ -118,7 +124,7 @@ module top(
         .ENABLE_FAST_MUL    (0),
         .ENABLE_IRQ         (1),
         .ENABLE_IRQ_QREGS   (0)
-    ) cpu(
+    ) cpu0(
         .clk            (clk),
         .resetn         (reset_n),
         .mem_valid      (mem_valid),

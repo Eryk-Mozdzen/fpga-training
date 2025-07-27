@@ -1,4 +1,4 @@
-#include "leds.h"
+#include "gpio.h"
 #include "uart.h"
 #include "ws2812b.h"
 
@@ -113,7 +113,7 @@ static void la_rtest() {
 int main() {
     unsigned char v, ch;
 
-    leds_set(6);
+    gpio_set(6);
     la_wtest();
     la_rtest();
 
@@ -137,14 +137,14 @@ int main() {
                 endian_test();
                 break;
             case 'g':
-                v = leds_get();
+                v = gpio_get();
                 uart_puts("LED = ");
                 uart_print_hex(v);
                 uart_puts("\r\n");
                 break;
             case 'i':
-                v = leds_get();
-                leds_set(v + 1);
+                v = gpio_get();
+                gpio_set(v + 1);
                 break;
             case 'l':
                 uart_puts(" enter 6 hex digits: ");

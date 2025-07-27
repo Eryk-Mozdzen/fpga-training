@@ -11,7 +11,7 @@ set(TARGET ${CMAKE_PROJECT_NAME}.elf)
 add_executable(${TARGET}
     "src/startup.s"
     "src/main.c"
-    "src/leds.c"
+    "src/gpio.c"
     "src/uart.c"
     "src/ws2812b.c"
 )
@@ -63,6 +63,7 @@ target_link_options(${TARGET} PRIVATE
 
 add_custom_command(TARGET ${TARGET} POST_BUILD
 	COMMAND ${CMAKE_OBJCOPY} -O binary ${TARGET} ${CMAKE_PROJECT_NAME}.bin
+    COMMAND ${CMAKE_SIZE} ${TARGET}
     COMMAND rm -f ${CMAKE_SOURCE_DIR}/../src/mem_init[0-3].ini ../src/sys_parameters.v
     COMMAND gcc ${CMAKE_SOURCE_DIR}/conv_to_init.c -o ${CMAKE_SOURCE_DIR}/build/conv_to_init
     COMMAND ${CMAKE_SOURCE_DIR}/build/conv_to_init 27000000 12 ${CMAKE_PROJECT_NAME}.bin

@@ -10,8 +10,7 @@ VERILOG = \
 	src/simpleuart.v \
 	src/sram.v \
 	src/sram8bit.v \
-	src/led_ctrl.v \
-	src/ws2812b_tgt.v \
+	src/gpio.v \
 	src/ws2812b.v
 
 SYNTH_JSON   = build/$(TOP)_synth.json
