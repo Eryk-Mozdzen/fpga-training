@@ -75,7 +75,8 @@ module top(
     );
 
     ws2812b #(
-        .MAX_CASCADE_LENGTH (1)
+        .CASCADE_LENGTH (1),
+        .CLK_FREQ       (27e6)
     ) ws2812b0(
         .clk            (clk),
         .reset_n        (reset_n),

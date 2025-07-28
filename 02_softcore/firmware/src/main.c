@@ -113,7 +113,7 @@ static void la_rtest() {
 int main() {
     unsigned char v, ch;
 
-    gpio_set(6);
+    gpio_set(0);
     la_wtest();
     la_rtest();
 
