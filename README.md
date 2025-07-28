@@ -16,5 +16,5 @@ docker build -t fpga-training .
 ### Using Docker
 
 ```bash
-docker run --rm --device=/dev/bus/usb -it -v "$PWD":/project -w /project fpga-training bash
+docker run --rm --privileged -it -v /run/udev:/run/udev -v /dev:/dev -v "$PWD":/project -w /project fpga-training bash
 ```
