@@ -7,14 +7,24 @@
 - [ ] camera image processing
 - [ ] hardware accelerator for robotic's algorithm
 
-### Building Docker
+### Build Docker
 
 ```bash
 docker build -t fpga-training .
 ```
 
-### Using Docker
+### Enter Docker
 
 ```bash
-docker run --rm --privileged -it -v /run/udev:/run/udev -v /dev:/dev -v "$PWD":/project -w /project fpga-training bash
+docker run \
+    --rm \
+    --privileged \
+    -it \
+    -e DISPLAY=$DISPLAY \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v /run/udev:/run/udev \
+    -v /dev:/dev \
+    -v "$PWD":/project \
+    -w /project \
+    fpga-training
 ```

@@ -12,6 +12,8 @@ VERILOG = \
 	src/sram8bit.v \
 	src/gpio.v \
 	src/ws2812b.v
+TB = \
+	ws2812b
 
 SYNTH_JSON   = build/$(TOP)_synth.json
 ROUTED_JSON  = build/$(TOP)_pnr.json
@@ -37,4 +39,13 @@ flash:
 clean:
 	rm -rf build
 
-.PHONY: all clean flash
+tb: $(TB:%=build/%.vcd)
+
+build/%.vcd: src/%.v src/tb/%_tb.v
+	mkdir -p build
+	iverilog -o build/$*_tb.out src/$*.v src/tb/$*_tb.v
+	vvp build/$*_tb.out
+	rm build/$*_tb.out
+	mv $*_tb.vcd build
+
+.PHONY: all clean flash tb

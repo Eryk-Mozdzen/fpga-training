@@ -19,7 +19,7 @@ module ws2812b #(
         input wire [31:0]   wdata,
         output wire [31:0]  rdata,
         output wire         ready,
-        output wire         din
+        output reg          din
     );
 
     // assume that CASCADE_LENGTH = 1

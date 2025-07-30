@@ -9,6 +9,9 @@ RUN apt update \
         python3-pip \
         libeigen3-dev \
         build-essential \
+        automake \
+        autoconf \
+        libtool \
         git \
         wget \
         bison \
@@ -16,6 +19,16 @@ RUN apt update \
         pkg-config \
         tcl-dev \
         tclsh \
+        gperf \
+        gawk \
+        desktop-file-utils \
+        libgtk-3-dev \
+        tcl-dev \
+        tk-dev \
+        libgtk2.0-dev \
+        libbz2-dev \
+        libjudy-dev \
+        libgirepository1.0-dev \
         libffi-dev \
         libftdi1-dev \
         libusb-1.0-0-dev \
@@ -65,3 +78,17 @@ RUN git clone --depth 1 --branch v0.13.1 --recursive https://github.com/trabucay
     && make install \
     && mkdir -p /etc/udev/rules.d \
     && cp ../99-openfpgaloader.rules /etc/udev/rules.d/
+
+RUN git clone --depth 1 --branch v3.3.116 --recursive https://github.com/gtkwave/gtkwave.git \
+    && cd gtkwave/gtkwave3-gtk3 \
+    && ./autogen.sh \
+    && ./configure --enable-gtk3 \
+    && make -j6 \
+    && make install
+
+RUN git clone --depth 1 --branch v12_0 --recursive https://github.com/steveicarus/iverilog.git \
+    && cd iverilog \
+    && sh autoconf.sh \
+    && ./configure \
+    && make -j6 \
+    && make install
