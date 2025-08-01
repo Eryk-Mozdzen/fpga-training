@@ -23,7 +23,6 @@ module ws2812b #(
     );
 
     // assume that CASCADE_LENGTH = 1
-    // rainbow
     // don't care about mcu control
 
     localparam T0H_DURATION = $rtoi(CLK_FREQ*0.40e-6 + 0.5);
@@ -32,142 +31,56 @@ module ws2812b #(
     localparam T1L_DURATION = $rtoi(CLK_FREQ*0.45e-6 + 0.5);
     localparam RES_DURATION = $rtoi(CLK_FREQ*300e-6 + 0.5);
 
-    localparam STATE_IDLE   = 3'b000;
-    localparam STATE_T0H    = 3'b001;
-    localparam STATE_T0L    = 3'b010;
-    localparam STATE_T1H    = 3'b011;
-    localparam STATE_T1L    = 3'b100;
-    localparam STATE_RES    = 3'b101;
+    localparam STATE_IDLE   = 2'b00;
+    localparam STATE_TxH    = 2'b01;
+    localparam STATE_TxL    = 2'b10;
+    localparam STATE_RES    = 2'b11;
 
-    reg [23:0]  value       = 0;
-    reg [2:0]   state       = STATE_RES;
-    reg [4:0]   bit_counter = 0;
-    reg [31:0]  clk_counter = 0;
-
-    reg [2:0]   color_state = 0;
-    reg [7:0]   color_step  = 0;
-    reg [31:0]  color_clk   = 0;
+    reg [23:0]  value;
+    reg [1:0]   state = STATE_IDLE;
+    reg [4:0]   remaining;
+    reg [31:0]  counter;
 
     always @(posedge clk) begin
         case (state)
             STATE_IDLE: begin
+                value <= 24'hCF80F2;
+                remaining <= 24;
+
+                state <= STATE_TxH;
+                counter <= 0;
+                din <= 1'b1;
             end
-            STATE_T0H: begin
-                if (clk_counter >= T0H_DURATION) begin
-                    clk_counter <= 'b0;
-                    state <= STATE_T0L;
+            STATE_TxH: begin
+                if ((counter + 1) >= (value[remaining - 1] ? T1H_DURATION : T0H_DURATION)) begin
+                    state <= STATE_TxL;
+                    counter <= 0;
+                    din <= 1'b0;
                 end else begin
-                    clk_counter <= clk_counter + 1;
-                    din <= 1'b1;
+                    counter <= counter + 1;
                 end
             end
-            STATE_T0L: begin
-                if (clk_counter >= T0L_DURATION) begin
-                    clk_counter <= 'b0;
-                    if (bit_counter >= 24) begin
-                        bit_counter <= 'b0;
+            STATE_TxL: begin
+                if ((counter + 1) >= (value[remaining - 1] ? T1L_DURATION : T0L_DURATION)) begin
+                    counter <= 0;
+                    if (remaining == 1) begin
                         state <= STATE_RES;
+                        din <= 1'b0;
                     end else begin
-                        bit_counter <= bit_counter + 1;
-                        if (value[23 - bit_counter - 1]) begin
-                            state <= STATE_T1H;
-                        end else begin
-                            state <= STATE_T0H;
-                        end
+                        remaining <= remaining - 1;
+                        state <= STATE_TxH;
+                        counter <= 0;
+                        din <= 1'b1;
                     end
                 end else begin
-                    clk_counter <= clk_counter + 1;
-                    din <= 1'b0;
-                end
-            end
-            STATE_T1H: begin
-                if (clk_counter >= T1H_DURATION) begin
-                    clk_counter <= 'b0;
-                    state <= STATE_T1L;
-                end else begin
-                    clk_counter <= clk_counter + 1;
-                    din <= 1'b1;
-                end
-            end
-            STATE_T1L: begin
-                if (clk_counter >= T1L_DURATION) begin
-                    clk_counter <= 'b0;
-                    if (bit_counter >= 24) begin
-                        bit_counter <= 'b0;
-                        state <= STATE_RES;
-                    end else begin
-                        bit_counter <= bit_counter + 1;
-                        if (value[23 - bit_counter - 1]) begin
-                            state <= STATE_T1H;
-                        end else begin
-                            state <= STATE_T0H;
-                        end
-                    end
-                end else begin
-                    clk_counter <= clk_counter + 1;
-                    din <= 1'b0;
+                    counter <= counter + 1;
                 end
             end
             STATE_RES: begin
-                if (clk_counter >= RES_DURATION) begin
-                    clk_counter <= 'b0;
-                    bit_counter <= 'b0;
-                    if (value[23]) begin
-                        state <= STATE_T1H;
-                    end else begin
-                        state <= STATE_T0H;
-                    end
+                if ((counter + 1) >= RES_DURATION) begin
+                    state <= STATE_IDLE;
                 end else begin
-                    clk_counter <= clk_counter + 1;
-                    din <= 1'b0;
-
-                    if (color_clk >= 105469) begin
-                        color_clk <= 'b0;
-                        if (color_step >= 255) begin
-                            color_step <= 'b0;
-                            if (color_state >= 5) begin
-                                color_state <= 'b0;
-                            end else begin
-                                color_state <= color_state + 1;
-                            end
-                        end else begin
-                            color_step <= color_step + 1;
-                            case (color_state)
-                                'h0: begin
-                                    value[15:8]     <= 8'hFF;
-                                    value[23:16]    <= color_step;
-                                    value[7:0]      <= 8'h00;
-                                end
-                                'h1: begin
-                                    value[15:8]     <= 8'hFF - color_step;
-                                    value[23:16]    <= 8'hFF;
-                                    value[7:0]      <= 8'h00;
-                                end
-                                'h2: begin
-                                    value[15:8]     <= 8'h00;
-                                    value[23:16]    <= 8'hFF;
-                                    value[7:0]      <= color_step;
-                                end
-                                'h3: begin
-                                    value[15:8]     <= 8'h00;
-                                    value[23:16]    <= 8'hFF - color_step;
-                                    value[7:0]      <= 8'hFF;
-                                end
-                                'h4: begin
-                                    value[15:8]     <= color_step;
-                                    value[23:16]    <= 8'h00;
-                                    value[7:0]      <= 8'hFF;
-                                end
-                                'h5: begin
-                                    value[15:8]     <= 8'hFF;
-                                    value[23:16]    <= 8'h00;
-                                    value[7:0]      <= 8'hFF - color_step;
-                                end
-                            endcase
-                        end
-                    end else begin
-                        color_clk <= color_clk + 1;
-                    end
+                    counter <= counter + 1;
                 end
             end
         endcase
