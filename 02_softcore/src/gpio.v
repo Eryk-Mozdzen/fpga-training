@@ -1,14 +1,14 @@
 module gpio #(
-        parameter WIDTH = 8
-    ) (
-        input wire              clk,
-        input wire              reset_n,
-        input wire              sel,
-        input wire [WIDTH-1:0]  wdata,
-        input wire              wstrb,
-        output wire             ready,
-        output wire [31:0]      rdata
-    );
+    parameter WIDTH = 8
+) (
+    input wire              clk,
+    input wire              reset_n,
+    input wire              sel,
+    input wire [WIDTH-1:0]  wdata,
+    input wire              wstrb,
+    output wire             ready,
+    output wire [31:0]      rdata
+);
 
     reg [WIDTH-1:0] state = 'b0;
 

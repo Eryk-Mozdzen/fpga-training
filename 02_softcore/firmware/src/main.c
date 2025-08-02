@@ -112,6 +112,7 @@ static void la_rtest() {
 
 int main() {
     unsigned char v, ch;
+    unsigned int k;
 
     gpio_set(0);
     la_wtest();
@@ -129,6 +130,7 @@ int main() {
         uart_puts("   g: read LED value\r\n");
         uart_puts("   i: increment LED value\r\n");
         uart_puts("   l: set RGB LED\r\n");
+        uart_puts("   k: get RGB LED\r\n");
         uart_puts("   m: memory test\r\n");
         uart_puts("   r: read clock\r\n");
         ch = uart_getchar();
@@ -149,6 +151,12 @@ int main() {
             case 'l':
                 uart_puts(" enter 6 hex digits: ");
                 ws2812b_set(uart_get_hex());
+                uart_puts("\r\n");
+                break;
+            case 'k':
+                k = ws2812b_get();
+                uart_puts("RGB LED = ");
+                uart_print_hex(k);
                 uart_puts("\r\n");
                 break;
             case 'm':

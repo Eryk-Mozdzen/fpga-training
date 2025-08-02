@@ -1,18 +1,15 @@
-module top(
-        input wire          clk,
-        input wire          reset_button,
-        input wire          uart_rx,
-        output wire         uart_tx,
-        output wire         ws2812b_din,
-        output wire [5:0]   leds
-    );
+module top (
+    input wire          clk,
+    input wire          reset_button,
+    input wire          uart_rx,
+    output wire         uart_tx,
+    output wire         ws2812b_din,
+    output wire [5:0]   leds
+);
 
     `include "sys_parameters.v"
 
     parameter        MEMBYTES = 4*(1 << SRAM_ADDR_WIDTH);
-    parameter [31:0] STACKADDR = (MEMBYTES);
-    parameter [31:0] PROGADDR_RESET = 32'h0000_0000;
-    parameter [31:0] PROGADDR_IRQ = 32'h0000_0000;
 
     wire        reset_n;
     wire        mem_valid;
@@ -39,11 +36,11 @@ module top(
     //    SRAM 0x00000000 - 0x00003FFF
     //    GPIO 0x80000000 - 0x80000003
     //    UART 0x80000008 - 0x8000000F
-    // WS2812B 0x80001000 - 0x800017FF
+    // WS2812B 0x80002000 - 0x800027FF
     assign sram_sel     = mem_valid && (mem_addr < MEMBYTES);
-    assign gpio_sel     = mem_valid && (mem_addr >= 32'h80000000) && (mem_addr <= 32'h80000003);
-    assign uart_sel     = mem_valid && (mem_addr >= 32'h80000008) && (mem_addr <= 32'h8000000F);
-    assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h80001000) && (mem_addr <= 32'h800017FF);
+    assign gpio_sel     = mem_valid && (mem_addr >= 32'h8000_0000) && (mem_addr <= 32'h8000_0003);
+    assign uart_sel     = mem_valid && (mem_addr >= 32'h8000_0008) && (mem_addr <= 32'h8000_000F);
+    assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h8000_2000) && (mem_addr <= 32'h8000_27FF);
 
     assign mem_ready = mem_valid & (sram_ready | gpio_ready | uart_ready | ws2812b_ready);
 
@@ -55,14 +52,14 @@ module top(
 
     assign leds = ~gpio_data_o[5:0];
 
-    reset_ctrl reset_controller(
+    reset_ctrl reset_controller (
         .clk            (clk),
         .reset_button   (reset_button),
         .reset_n        (reset_n)
     );
 
-    uart_wrap uart0(
-        .clk(clk),
+    uart_wrap uart0 (
+        .clk            (clk),
         .reset_n        (reset_n),
         .uart_tx        (uart_tx),
         .uart_rx        (uart_rx),
@@ -75,13 +72,12 @@ module top(
     );
 
     ws2812b #(
-        .CASCADE_LENGTH (1),
         .CLK_FREQ       (27e6)
-    ) ws2812b0(
+    ) ws2812b0 (
         .clk            (clk),
         .reset_n        (reset_n),
         .sel            (ws2812b_sel),
-        .addrxd         (mem_addr[10:0]), // why 'addr' not work here ???
+        .addr           (mem_addr[10:0]),
         .wstrb          (mem_wstrb),
         .wdata          (mem_wdata),
         .rdata          (ws2812b_data_o),
@@ -91,7 +87,7 @@ module top(
 
     gpio #(
         .WIDTH          (6)
-    ) gpio0(
+    ) gpio0 (
         .clk            (clk),
         .reset_n        (reset_n),
         .sel            (gpio_sel),
@@ -103,7 +99,7 @@ module top(
 
     sram #(
         .SRAM_ADDR_WIDTH    (SRAM_ADDR_WIDTH)
-    ) sram0(
+    ) sram0 (
         .clk            (clk),
         .reset_n        (reset_n),
         .sram_sel       (sram_sel),
@@ -115,9 +111,9 @@ module top(
     );
 
     picorv32 #(
-        .STACKADDR          (STACKADDR),
-        .PROGADDR_RESET     (PROGADDR_RESET),
-        .PROGADDR_IRQ       (PROGADDR_IRQ),
+        .STACKADDR          (MEMBYTES),
+        .PROGADDR_RESET     (32'h0000_0000),
+        .PROGADDR_IRQ       (32'h0000_0000),
         .BARREL_SHIFTER     (0),
         .COMPRESSED_ISA     (0),
         .ENABLE_MUL         (0),
@@ -125,7 +121,7 @@ module top(
         .ENABLE_FAST_MUL    (0),
         .ENABLE_IRQ         (1),
         .ENABLE_IRQ_QREGS   (0)
-    ) cpu0(
+    ) cpu0 (
         .clk            (clk),
         .resetn         (reset_n),
         .mem_valid      (mem_valid),
