@@ -9,7 +9,6 @@ VERILOG = \
 	src/uart_wrap.v \
 	src/simpleuart.v \
 	src/sram.v \
-	src/sram8bit.v \
 	src/gpio.v \
 	src/ws2812b.v
 TB = \

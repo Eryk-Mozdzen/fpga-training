@@ -7,10 +7,6 @@ module top (
     output wire [5:0]   leds
 );
 
-    `include "sys_parameters.v"
-
-    parameter MEMBYTES = 4*(1 << SRAM_ADDR_WIDTH);
-
     wire        resetn;
     wire        mem_valid;
     wire        mem_instr;
@@ -37,7 +33,7 @@ module top (
     //    GPIO 0x80000000 - 0x80000003
     //    UART 0x80000008 - 0x8000000F
     // WS2812B 0x80020000 - 0x8002FFFF
-    assign sram_sel     = mem_valid && (mem_addr < MEMBYTES);
+    assign sram_sel     = mem_valid && (mem_addr >= 32'h0000_0000) && (mem_addr <= 32'h0000_3FFF);
     assign gpio_sel     = mem_valid && (mem_addr >= 32'h8000_0000) && (mem_addr <= 32'h8000_0003);
     assign uart_sel     = mem_valid && (mem_addr >= 32'h8000_0008) && (mem_addr <= 32'h8000_000F);
     assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h8002_0000) && (mem_addr <= 32'h8002_FFFF);
@@ -97,20 +93,21 @@ module top (
     );
 
     sram #(
-        .SRAM_ADDR_WIDTH    (SRAM_ADDR_WIDTH)
+        .BYTES          (16384),
+        .FILE           ("mem_init.ini")
     ) sram0 (
         .clk            (clk),
         .resetn         (resetn),
-        .sram_sel       (sram_sel),
-        .addr           (mem_addr[SRAM_ADDR_WIDTH + 1:0]),
+        .sel            (sram_sel),
+        .addr           (mem_addr),
         .wstrb          (mem_wstrb),
-        .sram_data_i    (mem_wdata),
-        .sram_data_o    (sram_rdata),
-        .sram_ready     (sram_ready)
+        .wdata          (mem_wdata),
+        .rdata          (sram_rdata),
+        .ready          (sram_ready)
     );
 
     picorv32 #(
-        .STACKADDR          (MEMBYTES),
+        .STACKADDR          (32'h0000_4000),
         .PROGADDR_RESET     (32'h0000_0000),
         .PROGADDR_IRQ       (32'h0000_0000),
         .BARREL_SHIFTER     (0),

@@ -3,5 +3,5 @@
 .global _start
 
 _start:
-    li x2, 4*(1<<SRAM_ADDR_WIDTH)
+    li x2, 16384
     call main
