@@ -61,14 +61,14 @@ module top (
     uart_wrap uart0 (
         .clk            (clk),
         .resetn         (resetn),
-        .uart_tx        (uart_tx),
-        .uart_rx        (uart_rx),
         .uart_sel       (uart_sel),
         .addr           (mem_addr[3:0]),
         .uart_wstrb     (mem_wstrb),
         .uart_di        (mem_wdata),
         .uart_do        (uart_rdata),
-        .uart_ready     (uart_ready)
+        .uart_ready     (uart_ready),
+        .uart_tx        (uart_tx),
+        .uart_rx        (uart_rx)
     );
 
     ws2812b #(
@@ -85,16 +85,15 @@ module top (
         .din            (ws2812b_din)
     );
 
-    gpio #(
-        .WIDTH          (6)
-    ) gpio0 (
+    gpio gpio0 (
         .clk            (clk),
         .resetn         (resetn),
         .sel            (gpio_sel),
-        .wdata          (mem_wdata[5:0]),
-        .wstrb          (mem_wstrb[0]),
-        .ready          (gpio_ready),
-        .rdata          (gpio_rdata)
+        .addr           (mem_addr[15:0]),
+        .wstrb          (mem_wstrb),
+        .wdata          (mem_wdata),
+        .rdata          (gpio_rdata),
+        .ready          (gpio_ready)
     );
 
     sram #(
@@ -103,11 +102,11 @@ module top (
         .clk            (clk),
         .resetn         (resetn),
         .sram_sel       (sram_sel),
-        .wstrb          (mem_wstrb),
         .addr           (mem_addr[SRAM_ADDR_WIDTH + 1:0]),
+        .wstrb          (mem_wstrb),
         .sram_data_i    (mem_wdata),
-        .sram_ready     (sram_ready),
-        .sram_data_o    (sram_rdata)
+        .sram_data_o    (sram_rdata),
+        .sram_ready     (sram_ready)
     );
 
     picorv32 #(
@@ -126,11 +125,11 @@ module top (
         .resetn         (resetn),
         .mem_valid      (mem_valid),
         .mem_instr      (mem_instr),
-        .mem_ready      (mem_ready),
         .mem_addr       (mem_addr),
-        .mem_wdata      (mem_wdata),
         .mem_wstrb      (mem_wstrb),
+        .mem_wdata      (mem_wdata),
         .mem_rdata      (mem_rdata),
+        .mem_ready      (mem_ready),
         .irq            ('b0)
     );
 
