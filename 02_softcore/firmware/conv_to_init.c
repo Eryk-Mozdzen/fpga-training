@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BYTES  16384
-#define OUTPUT "../../src/mem_init.ini"
+#define BYTES  65536
+#define OUTPUT "mem_init.ini"
 
 int main(int argc, char **argv) {
     if(argc != 2) {

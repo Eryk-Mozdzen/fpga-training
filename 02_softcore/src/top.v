@@ -29,11 +29,7 @@ module top (
     wire [31:0] ws2812b_rdata;
     wire        ws2812b_ready;
 
-    //    SRAM 0x00000000 - 0x00003FFF
-    //    GPIO 0x80000000 - 0x80000003
-    //    UART 0x80000008 - 0x8000000F
-    // WS2812B 0x80020000 - 0x8002FFFF
-    assign sram_sel     = mem_valid && (mem_addr >= 32'h0000_0000) && (mem_addr <= 32'h0000_3FFF);
+    assign sram_sel     = mem_valid && (mem_addr >= 32'h0000_0000) && (mem_addr <= 32'h0000_FFFF);
     assign gpio_sel     = mem_valid && (mem_addr >= 32'h8000_0000) && (mem_addr <= 32'h8000_0003);
     assign uart_sel     = mem_valid && (mem_addr >= 32'h8000_0008) && (mem_addr <= 32'h8000_000F);
     assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h8002_0000) && (mem_addr <= 32'h8002_FFFF);
@@ -93,8 +89,8 @@ module top (
     );
 
     sram #(
-        .BYTES          (16384),
-        .FILE           ("mem_init.ini")
+        .BYTES          (65536),
+        .FILE           ("../firmware/build/mem_init.ini")
     ) sram0 (
         .clk            (clk),
         .resetn         (resetn),
@@ -107,7 +103,7 @@ module top (
     );
 
     picorv32 #(
-        .STACKADDR          (32'h0000_4000),
+        .STACKADDR          (32'h0000_FFF0),
         .PROGADDR_RESET     (32'h0000_0000),
         .PROGADDR_IRQ       (32'h0000_0000),
         .BARREL_SHIFTER     (0),

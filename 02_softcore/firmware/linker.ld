@@ -1,33 +1,26 @@
- ENTRY( _start )
- SECTIONS
- {
- /* text: test code section */
- . = 0x0;
- .text :
- {
- *(.text)
- }
- .sbss :
- {
- *(.sbss)
- }
- .bss :
- {
- *(.bss)
- }
- .rodata :
- {
- *(.rodata)
- }
- .srodata :
- {
- *(.srodata)
- }
- /* data: Initialized data segment */
- .data :
- {
- *(.data)
- }
- /* End of uninitalized data segement */
- _end = .;
- }
+ENTRY(_start)
+
+MEMORY {
+    RAM (rwx) : ORIGIN = 0x00000000, LENGTH = 64K
+}
+
+SECTIONS {
+    .text : {
+        *(.init)
+        *(.text*)
+        *(.rodata*)
+        *(.srodata*)
+    } > RAM
+
+    .data : {
+        *(.data*)
+    } > RAM
+
+    .bss : {
+        *(.sbss*)
+        *(.bss*)
+        *(COMMON)
+    } > RAM
+
+    _end = .;
+}
