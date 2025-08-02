@@ -2,7 +2,7 @@ module gpio #(
     parameter WIDTH = 8
 ) (
     input wire              clk,
-    input wire              reset_n,
+    input wire              resetn,
     input wire              sel,
     input wire [WIDTH-1:0]  wdata,
     input wire              wstrb,
@@ -15,8 +15,8 @@ module gpio #(
     assign rdata = {(32-WIDTH)'b0, state};
     assign ready = sel;
 
-    always @(posedge clk or negedge reset_n)
-        if(!reset_n)
+    always @(posedge clk or negedge resetn)
+        if(!resetn)
             state <= 'b0;
         else if(sel)
             if(wstrb)

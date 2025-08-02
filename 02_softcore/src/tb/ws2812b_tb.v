@@ -6,7 +6,7 @@ module ws2812b_tb();
     reg         clk;
     reg         rst;
     reg         sel;
-    reg [10:0]  addr;
+    reg [15:0]  addr;
     reg [3:0]   wstrb;
     reg [31:0]  wdata;
     wire [31:0] rdata;
@@ -15,9 +15,9 @@ module ws2812b_tb();
 
     ws2812b #(
         .CLK_FREQ       (100e6)
-    ) uut(
+    ) uut (
         .clk            (clk),
-        .reset_n        (rst),
+        .resetn         (rst),
         .sel            (sel),
         .addr           (addr),
         .wstrb          (wstrb),
@@ -48,9 +48,9 @@ module ws2812b_tb();
         #6
 
         sel = 1;
-        addr = 11'h0;
-        wstrb = 4'b1111;
-        wdata = 32'h80CF8002;
+        addr = 16'h0;
+        wstrb = 4'b0111;
+        wdata = 32'hCF8002;
 
         #100
 
@@ -59,7 +59,7 @@ module ws2812b_tb();
         #400000
 
         sel = 1;
-        addr = 11'h0;
+        addr = 16'h0;
         wstrb = 4'b0000;
         wdata = 24'hFFFFFF;
     end

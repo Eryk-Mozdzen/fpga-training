@@ -7,7 +7,7 @@ module sram
   #(parameter SRAM_ADDR_WIDTH=11)
    (
     input wire                 clk,
-    input wire                 reset_n,
+    input wire                 resetn,
     input wire                 sram_sel,
     input wire [3:0]           wstrb,
     input wire [SRAM_ADDR_WIDTH + 1:0] addr,
@@ -27,7 +27,7 @@ sram8
     ) gmem3
    (
     .clk(clk),
-    .reset_n(reset_n),
+    .reset_n(resetn),
     .ce(sram_sel), 
     .wre(wstrb[3]),
     .addr(addr[SRAM_ADDR_WIDTH + 1:2]),
@@ -42,7 +42,7 @@ sram8
     ) gmem2
    (
     .clk(clk),
-    .reset_n(reset_n),
+    .reset_n(resetn),
     .ce(sram_sel), 
     .wre(wstrb[2]),
     .addr(addr[SRAM_ADDR_WIDTH + 1:2]),
@@ -57,7 +57,7 @@ sram8
     ) gmem1
    (
     .clk(clk),
-    .reset_n(reset_n),
+    .reset_n(resetn),
     .ce(sram_sel), 
     .wre(wstrb[1]),
     .addr(addr[SRAM_ADDR_WIDTH + 1:2]),
@@ -72,7 +72,7 @@ sram8
     ) gmem0
    (
     .clk(clk),
-    .reset_n(reset_n),
+    .reset_n(resetn),
     .ce(sram_sel), 
     .wre(wstrb[0]),
     .addr(addr[SRAM_ADDR_WIDTH + 1:2]),

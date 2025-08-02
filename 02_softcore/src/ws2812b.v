@@ -1,21 +1,14 @@
-
-// offset       name        fields
-// 0x00000000   LED0    RW  SxxxxxxxRRRRRRRRGGGGGGGGBBBBBBBB
-// 0x00000004   LED1    RW  SxxxxxxxRRRRRRRRGGGGGGGGBBBBBBBB
-// ...          ...     ..  ...
-// ...          LEDn    RW  SxxxxxxxRRRRRRRRGGGGGGGGBBBBBBBB
-
 module ws2812b #(
     parameter CLK_FREQ = 1e6
 ) (
     input wire          clk,
-    input wire          reset_n,
+    input wire          resetn,
     input wire          sel,
     input wire [3:0]    wstrb,
-    input wire [10:0]   addr,
+    input wire [15:0]   addr,
     input wire [31:0]   wdata,
-    output reg [31:0]   rdata,
-    output reg          ready,
+    output wire [31:0]  rdata,
+    output wire         ready,
     output reg          din
 );
 
@@ -35,38 +28,26 @@ module ws2812b #(
     reg [4:0]   remaining;
     reg [31:0]  counter;
 
-    always @(posedge clk or negedge reset_n) begin
-        if (!reset_n) begin
-            value <= 24'h0;
+    assign rdata = {8'b0, value[15:8], value[23:16], value[7:0]};
+    assign ready = sel;
+
+    always @(posedge clk or negedge resetn) begin
+        if (!resetn) begin
             state <= STATE_IDLE;
-            counter <= 0;
+            value <= 0;
             din <= 0;
-            ready <= 0;
         end else begin
-            if (sel) begin
-                ready <= 1;
-                case (addr)
-                    11'h0: begin
-                        rdata <= {8'b0, value[15:8], value[23:16], value[7:0]};
+            if (sel && (state == STATE_IDLE)) begin
+                if (wstrb[0]) value[ 7: 0] <= wdata[ 7: 0];
+                if (wstrb[1]) value[23:16] <= wdata[15: 8];
+                if (wstrb[2]) value[15: 8] <= wdata[23:16];
 
-                        if (state == STATE_IDLE) begin
-                            if (wstrb[0]) value[ 7: 0] <= wdata[ 7: 0];
-                            if (wstrb[1]) value[15: 8] <= wdata[23:16];
-                            if (wstrb[2]) value[23:16] <= wdata[16: 8];
-
-                            if (wstrb[3]) begin
-                                if(wdata[31]) begin
-                                    state <= STATE_TxH;
-                                    remaining <= 24;
-                                    counter <= 0;
-                                    din <= 1;
-                                end
-                            end
-                        end
-                    end
-                endcase
-            end else begin
-                ready <= 0;
+                if (wstrb[2:0]) begin
+                    state <= STATE_TxH;
+                    remaining <= 24;
+                    counter <= 0;
+                    din <= 1;
+                end
             end
 
             case (state)

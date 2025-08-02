@@ -1,7 +1,7 @@
 module uart_wrap
   (
    input wire         clk,
-   input wire         reset_n,
+   input wire         resetn,
    input wire         uart_rx,
    output wire        uart_tx,
    input wire         uart_sel,
@@ -27,7 +27,7 @@ module uart_wrap
    simpleuart uart
      (
       .clk(clk),
-      .resetn(reset_n),
+      .resetn(resetn),
       .ser_tx(uart_tx),
       .ser_rx(uart_rx),
       .reg_div_we(div_sel ? uart_wstrb : 4'b0000),

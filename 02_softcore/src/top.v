@@ -9,9 +9,9 @@ module top (
 
     `include "sys_parameters.v"
 
-    parameter        MEMBYTES = 4*(1 << SRAM_ADDR_WIDTH);
+    parameter MEMBYTES = 4*(1 << SRAM_ADDR_WIDTH);
 
-    wire        reset_n;
+    wire        resetn;
     wire        mem_valid;
     wire        mem_instr;
     wire [31:0] mem_addr;
@@ -21,53 +21,53 @@ module top (
     wire        mem_ready;
     wire        mem_inst;
     wire        gpio_sel;
+    wire [31:0] gpio_rdata;
     wire        gpio_ready;
-    wire [31:0] gpio_data_o;
     wire        sram_sel;
+    wire [31:0] sram_rdata;
     wire        sram_ready;
-    wire [31:0] sram_data_o;
     wire        uart_sel;
-    wire [31:0] uart_data_o;
+    wire [31:0] uart_rdata;
     wire        uart_ready;
     wire        ws2812b_sel;
-    wire [31:0] ws2812b_data_o;
+    wire [31:0] ws2812b_rdata;
     wire        ws2812b_ready;
 
     //    SRAM 0x00000000 - 0x00003FFF
     //    GPIO 0x80000000 - 0x80000003
     //    UART 0x80000008 - 0x8000000F
-    // WS2812B 0x80002000 - 0x800027FF
+    // WS2812B 0x80020000 - 0x8002FFFF
     assign sram_sel     = mem_valid && (mem_addr < MEMBYTES);
     assign gpio_sel     = mem_valid && (mem_addr >= 32'h8000_0000) && (mem_addr <= 32'h8000_0003);
     assign uart_sel     = mem_valid && (mem_addr >= 32'h8000_0008) && (mem_addr <= 32'h8000_000F);
-    assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h8000_2000) && (mem_addr <= 32'h8000_27FF);
+    assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h8002_0000) && (mem_addr <= 32'h8002_FFFF);
 
     assign mem_ready = mem_valid & (sram_ready | gpio_ready | uart_ready | ws2812b_ready);
 
     assign mem_rdata =
-        sram_sel    ? sram_data_o :
-        gpio_sel    ? gpio_data_o :
-        uart_sel    ? uart_data_o :
-        ws2812b_sel ? ws2812b_data_o : 32'h0;
+        sram_sel    ? sram_rdata :
+        gpio_sel    ? gpio_rdata :
+        uart_sel    ? uart_rdata :
+        ws2812b_sel ? ws2812b_rdata : 32'h0;
 
-    assign leds = ~gpio_data_o[5:0];
+    assign leds = ~gpio_rdata[5:0];
 
     reset_ctrl reset_controller (
         .clk            (clk),
         .reset_button   (reset_button),
-        .reset_n        (reset_n)
+        .resetn         (resetn)
     );
 
     uart_wrap uart0 (
         .clk            (clk),
-        .reset_n        (reset_n),
+        .resetn         (resetn),
         .uart_tx        (uart_tx),
         .uart_rx        (uart_rx),
         .uart_sel       (uart_sel),
         .addr           (mem_addr[3:0]),
         .uart_wstrb     (mem_wstrb),
         .uart_di        (mem_wdata),
-        .uart_do        (uart_data_o),
+        .uart_do        (uart_rdata),
         .uart_ready     (uart_ready)
     );
 
@@ -75,12 +75,12 @@ module top (
         .CLK_FREQ       (27e6)
     ) ws2812b0 (
         .clk            (clk),
-        .reset_n        (reset_n),
+        .resetn         (resetn),
         .sel            (ws2812b_sel),
-        .addr           (mem_addr[10:0]),
+        .addr           (mem_addr[15:0]),
         .wstrb          (mem_wstrb),
         .wdata          (mem_wdata),
-        .rdata          (ws2812b_data_o),
+        .rdata          (ws2812b_rdata),
         .ready          (ws2812b_ready),
         .din            (ws2812b_din)
     );
@@ -89,25 +89,25 @@ module top (
         .WIDTH          (6)
     ) gpio0 (
         .clk            (clk),
-        .reset_n        (reset_n),
+        .resetn         (resetn),
         .sel            (gpio_sel),
         .wdata          (mem_wdata[5:0]),
         .wstrb          (mem_wstrb[0]),
         .ready          (gpio_ready),
-        .rdata          (gpio_data_o)
+        .rdata          (gpio_rdata)
     );
 
     sram #(
         .SRAM_ADDR_WIDTH    (SRAM_ADDR_WIDTH)
     ) sram0 (
         .clk            (clk),
-        .reset_n        (reset_n),
+        .resetn         (resetn),
         .sram_sel       (sram_sel),
         .wstrb          (mem_wstrb),
         .addr           (mem_addr[SRAM_ADDR_WIDTH + 1:0]),
         .sram_data_i    (mem_wdata),
         .sram_ready     (sram_ready),
-        .sram_data_o    (sram_data_o)
+        .sram_data_o    (sram_rdata)
     );
 
     picorv32 #(
@@ -123,7 +123,7 @@ module top (
         .ENABLE_IRQ_QREGS   (0)
     ) cpu0 (
         .clk            (clk),
-        .resetn         (reset_n),
+        .resetn         (resetn),
         .mem_valid      (mem_valid),
         .mem_instr      (mem_instr),
         .mem_ready      (mem_ready),
