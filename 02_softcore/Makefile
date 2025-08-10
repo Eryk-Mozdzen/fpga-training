@@ -1,30 +1,35 @@
-TOP     = top
 FAMILY  = GW2A-18C
 DEVICE  = GW2AR-LV18QN88C8/I7
 CST     = tangnano20k.cst
-VERILOG = \
+
+SRC = \
 	src/top.v \
 	src/reset_ctrl.v \
 	picorv32/picorv32.v \
-	src/uart_wrap.v \
-	src/simpleuart.v \
 	src/sram.v \
 	src/gpio.v \
+	src/uart.v \
 	src/ws2812b.v
-TB = \
-	ws2812b
 
+TESTBENCH = \
+	src/tb/uart_fifo_tb.v \
+	src/tb/uart_transmitter_tb.v \
+	src/tb/uart_tb.v \
+	src/tb/ws2812b_tb.v
+
+TB_NAMES = $(basename $(notdir $(TESTBENCH)))
+TB_TARGETS = $(TB_NAMES:%=build/%.vcd)
+
+TOP     	 = top
 SYNTH_JSON   = build/$(TOP)_synth.json
 ROUTED_JSON  = build/$(TOP)_pnr.json
 BITSTREAM    = build/$(TOP).fs
 
 all: $(BITSTREAM)
 
-build:
+$(SYNTH_JSON): $(SRC)
 	mkdir -p build
-
-$(SYNTH_JSON): build $(VERILOG)
-	yosys -p "read_verilog $(VERILOG); synth_gowin -top $(TOP) -json $(SYNTH_JSON) -family gw2a"
+	yosys -p "read_verilog $(SRC); synth_gowin -top $(TOP) -json $(SYNTH_JSON) -family gw2a"
 
 $(ROUTED_JSON): $(SYNTH_JSON) $(CST)
 	nextpnr-himbaechel --json $(SYNTH_JSON) --write $(ROUTED_JSON) --device $(DEVICE) --vopt family=$(FAMILY) --vopt cst=$(CST)
@@ -38,13 +43,17 @@ flash:
 clean:
 	rm -rf build
 
-tb: $(TB:%=build/%.vcd)
+tb: $(TB_TARGETS)
 
-build/%.vcd: src/%.v src/tb/%_tb.v
+define TB_template
+build/$(basename $(notdir $(1))).vcd: $(1) $(SRC)
 	mkdir -p build
-	iverilog -o build/$*_tb.out src/$*.v src/tb/$*_tb.v
-	vvp build/$*_tb.out
-	rm build/$*_tb.out
-	mv $*_tb.vcd build
+	iverilog -o build/$(basename $(notdir $(1))).out $(SRC) $(1)
+	vvp build/$(basename $(notdir $(1))).out
+	rm build/$(basename $(notdir $(1))).out
+	mv $(basename $(notdir $(1))).vcd build/
+endef
+
+$(foreach tb,$(TESTBENCH),$(eval $(call TB_template,$(tb))))
 
 .PHONY: all clean flash tb

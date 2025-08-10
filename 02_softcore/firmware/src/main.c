@@ -38,7 +38,7 @@ static unsigned int mem_test() {
     return (errors);
 }
 
-static inline unsigned int readtime() {
+static unsigned int readtime() {
     unsigned int val;
     asm volatile("rdtime %0" : "=r"(val));
     return val;
@@ -61,17 +61,18 @@ static void endian_test() {
 
     ok = (byte0 == 0x11) && (byte3 == 0x44) && (i == 0xab332211);
     uart_puts("\r\nEndian test: at ");
-    uart_print_hex((unsigned int)addr);
+    uart_puth((unsigned int)addr);
     uart_puts(", byte0: ");
-    uart_print_hex((unsigned int)byte0);
+    uart_puth((unsigned int)byte0);
     uart_puts(", byte3: ");
-    uart_print_hex((unsigned int)byte3);
+    uart_puth((unsigned int)byte3);
     uart_puts(",\r\n     word: ");
-    uart_print_hex(i);
-    if(ok)
+    uart_puth(i);
+    if(ok) {
         uart_puts(" [PASSED]\r\n");
-    else
+    } else {
         uart_puts(" [FAILED]\r\n");
+    }
 }
 
 static void la_wtest() {
@@ -111,18 +112,11 @@ static void la_rtest() {
 }
 
 int main() {
-    unsigned char v, ch;
-    unsigned int k;
-
     gpio_set(0);
     la_wtest();
     la_rtest();
 
-    uart_set_div(CLK_FREQ / 115200.0 + 0.5);
-
-    uart_puts("\r\nStarting, CLK_FREQ: 0x");
-    uart_print_hex(CLK_FREQ);
-    uart_puts("\r\n\r\n");
+    uart_puts("\r\nStarting\n\r");
 
     while(1) {
         uart_puts("Enter command:\r\n");
@@ -133,47 +127,49 @@ int main() {
         uart_puts("   k: get RGB LED\r\n");
         uart_puts("   m: memory test\r\n");
         uart_puts("   r: read clock\r\n");
-        ch = uart_getchar();
+
+        const char ch = uart_getc();
+
         switch(ch) {
-            case 'e':
+            case 'e': {
                 endian_test();
-                break;
-            case 'g':
-                v = gpio_get();
+            } break;
+            case 'g': {
                 uart_puts("LED = ");
-                uart_print_hex(v);
+                uart_puth(gpio_get());
                 uart_puts("\r\n");
-                break;
-            case 'i':
-                v = gpio_get();
-                gpio_set(v + 1);
-                break;
-            case 'l':
+            } break;
+            case 'i': {
+                gpio_set(gpio_get() + 1);
+            } break;
+            case 'l': {
                 uart_puts(" enter 6 hex digits: ");
-                ws2812b_set(uart_get_hex());
+                ws2812b_set(uart_geth());
                 uart_puts("\r\n");
-                break;
-            case 'k':
-                k = ws2812b_get();
+            } break;
+            case 'k': {
                 uart_puts("RGB LED = ");
-                uart_print_hex(k);
+                uart_puth(ws2812b_get());
                 uart_puts("\r\n");
-                break;
-            case 'm':
-                if(mem_test())
+            } break;
+            case 'm': {
+                if(mem_test()) {
                     uart_puts("memory test FAILED.\r\n");
-                else
+                } else {
                     uart_puts("memory test PASSED.\r\n");
-                break;
-            case 'r':
+                }
+            } break;
+            case 'r': {
                 uart_puts("time is ");
-                uart_print_hex(readtime());
+                uart_puth(readtime());
                 uart_puts("\r\n");
-                break;
-            default:
+            } break;
+            default: {
                 uart_puts("  Try again...\r\n");
-                break;
+            } break;
         }
+
+        for(volatile unsigned int i=0; i<1e6; ++i) {}
     }
 
     return 0;

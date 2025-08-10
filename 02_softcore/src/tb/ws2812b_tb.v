@@ -1,29 +1,29 @@
-
 `timescale 1 ns / 100 ps
 
 module ws2812b_tb();
 
     reg         clk;
-    reg         rst;
-    reg         sel;
-    reg [15:0]  addr;
-    reg [3:0]   wstrb;
-    reg [31:0]  wdata;
-    wire [31:0] rdata;
-    wire        ready;
+    reg         resetn;
+    reg         mem_valid;
+    reg [31:0]  mem_addr;
+    reg [3:0]   mem_wstrb;
+    reg [31:0]  mem_wdata;
+    wire [31:0] mem_rdata;
+    wire        mem_ready;
     wire        din;
 
     ws2812b #(
+        .ADDR           (32'h0000_0000),
         .CLK_FREQ       (100e6)
     ) uut (
         .clk            (clk),
-        .resetn         (rst),
-        .sel            (sel),
-        .addr           (addr),
-        .wstrb          (wstrb),
-        .wdata          (wdata),
-        .rdata          (rdata),
-        .ready          (ready),
+        .resetn         (resetn),
+        .mem_valid      (mem_valid),
+        .mem_addr       (mem_addr),
+        .mem_wstrb      (mem_wstrb),
+        .mem_wdata      (mem_wdata),
+        .mem_rdata      (mem_rdata),
+        .mem_ready      (mem_ready),
         .din            (din)
     );
 
@@ -38,30 +38,30 @@ module ws2812b_tb();
 
     initial begin
         clk = 1;
-        rst = 1;
-        sel = 0;
+        resetn = 1;
 
         #8
-        rst = 0;
+        resetn = 0;
         #1
-        rst = 1;
+        resetn = 1;
         #6
 
-        sel = 1;
-        addr = 16'h0;
-        wstrb = 4'b0111;
-        wdata = 32'hCF8002;
-
-        #100
-
-        sel = 0;
+        #4
+        mem_wstrb   = 4'b0111;
+        mem_wdata   = 32'h0080_FFCE;
+        mem_addr    = 32'h0000_0000;
+        mem_valid   = 1;
+        #10
+        mem_valid   = 0;
 
         #400000
 
-        sel = 1;
-        addr = 16'h0;
-        wstrb = 4'b0000;
-        wdata = 24'hFFFFFF;
+        mem_wstrb   = 4'b0111;
+        mem_wdata   = 32'h00FF_FFFF;
+        mem_addr    = 32'h0000_0000;
+        mem_valid   = 1;
+        #10
+        mem_valid   = 0;
     end
 
     always begin

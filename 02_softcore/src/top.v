@@ -8,98 +8,37 @@ module top (
 );
 
     wire        resetn;
+
     wire        mem_valid;
     wire        mem_instr;
     wire [31:0] mem_addr;
+    wire [3:0]  mem_wstrb;
     wire [31:0] mem_wdata;
     wire [31:0] mem_rdata;
-    wire [3:0]  mem_wstrb;
     wire        mem_ready;
-    wire        mem_inst;
-    wire        gpio_sel;
-    wire [31:0] gpio_rdata;
-    wire        gpio_ready;
-    wire        sram_sel;
-    wire [31:0] sram_rdata;
-    wire        sram_ready;
-    wire        uart_sel;
-    wire [31:0] uart_rdata;
-    wire        uart_ready;
-    wire        ws2812b_sel;
-    wire [31:0] ws2812b_rdata;
-    wire        ws2812b_ready;
 
-    assign sram_sel     = mem_valid && (mem_addr >= 32'h0000_0000) && (mem_addr <= 32'h0000_FFFF);
-    assign gpio_sel     = mem_valid && (mem_addr >= 32'h8000_0000) && (mem_addr <= 32'h8000_0003);
-    assign uart_sel     = mem_valid && (mem_addr >= 32'h8000_0008) && (mem_addr <= 32'h8000_000F);
-    assign ws2812b_sel  = mem_valid && (mem_addr >= 32'h8002_0000) && (mem_addr <= 32'h8002_FFFF);
+    wire [31:0] sram0_rdata;
+    wire        sram0_ready;
+    wire [31:0] gpio0_rdata;
+    wire        gpio0_ready;
+    wire [31:0] uart0_rdata;
+    wire        uart0_ready;
+    wire [31:0] ws2812b0_rdata;
+    wire        ws2812b0_ready;
 
-    assign mem_ready = mem_valid & (sram_ready | gpio_ready | uart_ready | ws2812b_ready);
-
+    assign leds = ~gpio0_rdata[5:0];
+    assign mem_ready = sram0_ready | gpio0_ready | uart0_ready | ws2812b0_ready;
     assign mem_rdata =
-        sram_sel    ? sram_rdata :
-        gpio_sel    ? gpio_rdata :
-        uart_sel    ? uart_rdata :
-        ws2812b_sel ? ws2812b_rdata : 32'h0;
-
-    assign leds = ~gpio_rdata[5:0];
+        sram0_ready     ? sram0_rdata :
+        gpio0_ready     ? gpio0_rdata :
+        uart0_ready     ? uart0_rdata :
+        ws2812b0_ready  ? ws2812b0_rdata :
+        32'h0;
 
     reset_ctrl reset_controller (
         .clk            (clk),
         .reset_button   (reset_button),
         .resetn         (resetn)
-    );
-
-    uart_wrap uart0 (
-        .clk            (clk),
-        .resetn         (resetn),
-        .uart_sel       (uart_sel),
-        .addr           (mem_addr[3:0]),
-        .uart_wstrb     (mem_wstrb),
-        .uart_di        (mem_wdata),
-        .uart_do        (uart_rdata),
-        .uart_ready     (uart_ready),
-        .uart_tx        (uart_tx),
-        .uart_rx        (uart_rx)
-    );
-
-    ws2812b #(
-        .CLK_FREQ       (27e6)
-    ) ws2812b0 (
-        .clk            (clk),
-        .resetn         (resetn),
-        .sel            (ws2812b_sel),
-        .addr           (mem_addr[15:0]),
-        .wstrb          (mem_wstrb),
-        .wdata          (mem_wdata),
-        .rdata          (ws2812b_rdata),
-        .ready          (ws2812b_ready),
-        .din            (ws2812b_din)
-    );
-
-    gpio gpio0 (
-        .clk            (clk),
-        .resetn         (resetn),
-        .sel            (gpio_sel),
-        .addr           (mem_addr[15:0]),
-        .wstrb          (mem_wstrb),
-        .wdata          (mem_wdata),
-        .rdata          (gpio_rdata),
-        .ready          (gpio_ready)
-    );
-
-    sram #(
-        .BYTES          (65536),
-        .FILE           ("../firmware/build/mem_init.ini")
-    ) sram0 (
-        .clk            (clk),
-        .resetn         (resetn),
-        .sel            (sram_sel),
-        .addr           (mem_addr),
-        .wstrb          (mem_wstrb),
-        .wdata          (mem_wdata),
-        .rdata          (sram_rdata),
-        .ready          (sram_ready)
     );
 
     picorv32 #(
@@ -123,7 +62,70 @@ module top (
         .mem_wdata      (mem_wdata),
         .mem_rdata      (mem_rdata),
         .mem_ready      (mem_ready),
-        .irq            ('b0)
+        .irq            (0)
+    );
+
+    sram #(
+        .ADDR           (32'h0000_0000),
+        .FILE           ("firmware/build/memory.ini")
+    ) sram0 (
+        .clk            (clk),
+        .resetn         (resetn),
+        .mem_valid      (mem_valid),
+        .mem_addr       (mem_addr),
+        .mem_wstrb      (mem_wstrb),
+        .mem_wdata      (mem_wdata),
+        .mem_rdata      (sram0_rdata),
+        .mem_ready      (sram0_ready)
+    );
+
+    gpio #(
+        .ADDR           (32'h8000_0000)
+    ) gpio0 (
+        .clk            (clk),
+        .resetn         (resetn),
+        .mem_valid      (mem_valid),
+        .mem_addr       (mem_addr),
+        .mem_wstrb      (mem_wstrb),
+        .mem_wdata      (mem_wdata),
+        .mem_rdata      (gpio0_rdata),
+        .mem_ready      (gpio0_ready)
+    );
+
+    uart #(
+        .ADDR           (32'h8001_0000),
+        .CLK_FREQ       (27e6),
+        .BAUDRATE       (115200),
+        .DATA_BITS      (8),
+        .STOP_BITS      (1),
+        .TX_FIFO        (64),
+        .RX_FIFO        (64)
+    ) uart0 (
+        .clk            (clk),
+        .resetn         (resetn),
+        .mem_valid      (mem_valid),
+        .mem_addr       (mem_addr),
+        .mem_wstrb      (mem_wstrb),
+        .mem_wdata      (mem_wdata),
+        .mem_rdata      (uart0_rdata),
+        .mem_ready      (uart0_ready),
+        .tx             (uart_tx),
+        .rx             (uart_rx)
+    );
+
+    ws2812b #(
+        .ADDR           (32'h8002_0000),
+        .CLK_FREQ       (27e6)
+    ) ws2812b0 (
+        .clk            (clk),
+        .resetn         (resetn),
+        .mem_valid      (mem_valid),
+        .mem_addr       (mem_addr),
+        .mem_wstrb      (mem_wstrb),
+        .mem_wdata      (mem_wdata),
+        .mem_rdata      (ws2812b0_rdata),
+        .mem_ready      (ws2812b0_ready),
+        .din            (ws2812b_din)
     );
 
 endmodule

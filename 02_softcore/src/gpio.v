@@ -1,27 +1,34 @@
-module gpio (
-    input wire              clk,
-    input wire              resetn,
-    input wire              sel,
-    input wire [15:0]       addr,
-    input wire [3:0]        wstrb,
-    input wire [31:0]       wdata,
-    output wire [31:0]      rdata,
-    output wire             ready
+module gpio #(
+    parameter ADDR = 32'h0000_0000
+) (
+    input wire          clk,
+    input wire          resetn,
+    input wire          mem_valid,
+    input wire [31:0]   mem_addr,
+    input wire [3:0]    mem_wstrb,
+    input wire [31:0]   mem_wdata,
+    output reg [31:0]   mem_rdata,
+    output reg          mem_ready
 );
 
-    reg [31:0] state = 0;
-
-    assign rdata = state;
-    assign ready = sel;
-
     always @(posedge clk or negedge resetn) begin
-        if(!resetn) begin
-            state <= 0;
-        end else if(sel) begin
-            if (wstrb[0]) state[ 7: 0] <= wdata[ 7: 0];
-            if (wstrb[1]) state[15: 8] <= wdata[15: 8];
-            if (wstrb[2]) state[23:16] <= wdata[23:16];
-            if (wstrb[3]) state[31:24] <= wdata[31:24];
+        if (!resetn) begin
+            mem_rdata <= 0;
+            mem_ready <= 0;
+        end else begin
+            mem_ready <= 0;
+
+            if (mem_valid && ((mem_addr & 32'hFFFF_FFFF) == ADDR)) begin
+                if (|mem_wstrb) begin
+                    if (mem_wstrb[0]) mem_rdata[ 7: 0] <= mem_wdata[ 7: 0];
+                    if (mem_wstrb[1]) mem_rdata[15: 8] <= mem_wdata[15: 8];
+                    if (mem_wstrb[2]) mem_rdata[23:16] <= mem_wdata[23:16];
+                    if (mem_wstrb[3]) mem_rdata[31:24] <= mem_wdata[31:24];
+                    mem_ready <= 1;
+                end else begin
+                    mem_ready <= 1;
+                end
+            end
         end
     end
 

@@ -1,14 +1,15 @@
 module ws2812b #(
+    parameter ADDR = 32'h0000_0000,
     parameter CLK_FREQ = 1e6
 ) (
     input wire          clk,
     input wire          resetn,
-    input wire          sel,
-    input wire [15:0]   addr,
-    input wire [3:0]    wstrb,
-    input wire [31:0]   wdata,
-    output wire [31:0]  rdata,
-    output wire         ready,
+    input wire          mem_valid,
+    input wire [31:0]   mem_addr,
+    input wire [3:0]    mem_wstrb,
+    input wire [31:0]   mem_wdata,
+    output reg [31:0]   mem_rdata,
+    output reg          mem_ready,
     output reg          din
 );
 
@@ -28,25 +29,29 @@ module ws2812b #(
     reg [4:0]   remaining;
     reg [31:0]  counter;
 
-    assign rdata = {8'b0, value[15:8], value[23:16], value[7:0]};
-    assign ready = sel;
-
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             state <= STATE_IDLE;
             value <= 0;
             din <= 0;
+            mem_rdata <= 0;
+            mem_ready <= 0;
         end else begin
-            if (sel && (state == STATE_IDLE)) begin
-                if (wstrb[0]) value[ 7: 0] <= wdata[ 7: 0];
-                if (wstrb[1]) value[23:16] <= wdata[15: 8];
-                if (wstrb[2]) value[15: 8] <= wdata[23:16];
+            mem_ready <= 0;
 
-                if (wstrb[2:0]) begin
+            if (mem_valid && ((mem_addr & 32'hFFFF_FFFF) == ADDR)) begin
+                if (|mem_wstrb[2:0]) begin
+                    if (mem_wstrb[0]) value[ 7: 0] <= mem_wdata[ 7: 0];
+                    if (mem_wstrb[1]) value[23:16] <= mem_wdata[15: 8];
+                    if (mem_wstrb[2]) value[15: 8] <= mem_wdata[23:16];
+                    mem_ready <= 1;
                     state <= STATE_TxH;
                     remaining <= 24;
                     counter <= 0;
                     din <= 1;
+                end else begin
+                    mem_rdata <= {8'b0, value[15:8], value[23:16], value[7:0]};
+                    mem_ready <= 1;
                 end
             end
 
