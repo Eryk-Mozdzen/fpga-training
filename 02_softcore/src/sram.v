@@ -21,6 +21,7 @@ module sram #(
     end
 
     always @(posedge clk) begin
+        mem_rdata <= 0;
         mem_ready <= 0;
 
         if (mem_valid && ((mem_addr & 32'hFFFF_0000) == ADDR)) begin

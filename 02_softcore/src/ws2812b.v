@@ -37,6 +37,7 @@ module ws2812b #(
             mem_rdata <= 0;
             mem_ready <= 0;
         end else begin
+            mem_rdata <= 0;
             mem_ready <= 0;
 
             if (mem_valid && ((mem_addr & 32'hFFFF_FFFF) == ADDR)) begin

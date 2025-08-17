@@ -11,13 +11,6 @@ set(TARGET ${CMAKE_PROJECT_NAME}.elf)
 add_executable(${TARGET}
     "src/startup.s"
     "src/main.c"
-    "src/gpio.c"
-    "src/uart.c"
-    "src/ws2812b.c"
-)
-
-target_include_directories(${TARGET} PRIVATE
-    "include"
 )
 
 target_compile_options(${TARGET} PRIVATE
@@ -27,7 +20,7 @@ target_compile_options(${TARGET} PRIVATE
 	>
 
 	$<$<COMPILE_LANGUAGE:C>:
-		-O2
+		-Os
 		-Wall
         -Wextra
         -Wpedantic

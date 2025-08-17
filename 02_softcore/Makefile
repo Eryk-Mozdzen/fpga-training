@@ -12,8 +12,7 @@ SRC = \
 	src/ws2812b.v
 
 TESTBENCH = \
-	src/tb/uart_fifo_tb.v \
-	src/tb/uart_transmitter_tb.v \
+	src/tb/top_tb.v \
 	src/tb/uart_tb.v \
 	src/tb/ws2812b_tb.v
 

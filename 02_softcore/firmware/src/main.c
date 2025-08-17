@@ -1,175 +1,124 @@
-#include "gpio.h"
-#include "uart.h"
-#include "ws2812b.h"
 
-#define MEMSIZE 512
+#define GPIO0        (*((volatile unsigned int *)0x80000000U))
+#define UART0_STATUS (*((volatile unsigned int *)0x80010000U))
+#define UART0_TX     (*((volatile unsigned int *)0x80010004U))
+#define UART0_RX     (*((volatile unsigned int *)0x80010008U))
+#define WS2812B0     (*((volatile unsigned int *)0x80020000U))
 
-unsigned int mem[MEMSIZE];
-unsigned int test_vals[] = {
-    0, 0xffffffff, 0xaaaaaaaa, 0x55555555, 0xdeadbeef,
-};
+#define UART_STATUS_TX_READY (1U << 0U)
+#define UART_STATUS_RX_READY (1U << 1U)
 
-static unsigned int mem_test() {
-    unsigned int i, test, errors;
-    unsigned int val_read;
-
-    errors = 0;
-    for(test = 0; test < sizeof(test_vals) / sizeof(test_vals[0]); test++) {
-
-        for(i = 0; i < MEMSIZE; i++)
-            mem[i] = test_vals[test];
-
-        for(i = 0; i < MEMSIZE; i++) {
-            val_read = mem[i];
-            if(val_read != test_vals[test])
-                errors += 1;
-        }
-    }
-
-    for(i = 0; i < MEMSIZE; i++)
-        mem[i] = i + (i << 17);
-
-    for(i = 0; i < MEMSIZE; i++) {
-        val_read = mem[i];
-        if(val_read != i + (i << 17))
-            errors += 1;
-    }
-
-    return (errors);
-}
-
-static unsigned int readtime() {
+static inline unsigned int timer(void) {
     unsigned int val;
     asm volatile("rdtime %0" : "=r"(val));
     return val;
 }
 
-static void endian_test() {
-    volatile unsigned int test_loc = 0;
-    volatile unsigned int *addr = &test_loc;
-    volatile unsigned char *cp0, *cp3;
-    char byte0, byte3;
-    unsigned int i, ok;
-
-    cp0 = (volatile unsigned char *)addr;
-    cp3 = cp0 + 3;
-    *addr = 0x44332211;
-    byte0 = *cp0;
-    byte3 = *cp3;
-    *cp3 = 0xab;
-    i = *addr;
-
-    ok = (byte0 == 0x11) && (byte3 == 0x44) && (i == 0xab332211);
-    uart_puts("\r\nEndian test: at ");
-    uart_puth((unsigned int)addr);
-    uart_puts(", byte0: ");
-    uart_puth((unsigned int)byte0);
-    uart_puts(", byte3: ");
-    uart_puth((unsigned int)byte3);
-    uart_puts(",\r\n     word: ");
-    uart_puth(i);
-    if(ok) {
-        uart_puts(" [PASSED]\r\n");
-    } else {
-        uart_puts(" [FAILED]\r\n");
+static void print_str(char *str) {
+    while(*str) {
+        while(!(UART0_STATUS & UART_STATUS_TX_READY)) {
+        }
+        UART0_TX = *str;
+        str++;
     }
 }
 
-static void la_wtest() {
-    unsigned int v;
-    volatile unsigned int *ip = (volatile unsigned int *)&v;
-    volatile unsigned short *sp = (volatile unsigned short *)&v;
-    volatile unsigned char *cp = (volatile unsigned char *)&v;
+static void print_hex(unsigned int val) {
+    const char *digits = "0123456789ABCDEF";
 
-    *ip = 0x03020100; // addr 0x00
-
-    *sp = 0x0302;       // addr 0x00
-    *(sp + 1) = 0x0100; // addr 0x02
-
-    *cp = 0x03;       // addr 0x00
-    *(cp + 1) = 0x02; // addr 0x01
-    *(cp + 2) = 0x01; // addr 0x02
-    *(cp + 3) = 0x00; // addr 0x03
+    for(int i = 0; i < 8; i++) {
+        const int ch = (val & 0xF0000000U) >> 28U;
+        while(!(UART0_STATUS & UART_STATUS_TX_READY)) {
+        }
+        UART0_TX = digits[ch];
+        val = val << 4;
+    }
 }
 
-static void la_rtest() {
-    unsigned int v;
-    volatile unsigned int *ip = (volatile unsigned int *)&v;
-    volatile unsigned short *sp = (volatile unsigned short *)&v;
-    volatile unsigned char *cp = (volatile unsigned char *)&v;
+int main(void) {
+    GPIO0 = 0;
 
-    *ip = 0x03020100; // addr 0x00
+    print_str("\r\nStarting\n\r");
 
-    *ip; // addr 0x00
+    print_str("Enter command:\r\n");
+    print_str("   g: read LED value\r\n");
+    print_str("   i: increment LED value\r\n");
+    print_str("   k: read RGB LED\r\n");
+    print_str("   r: read clock\r\n");
 
-    *sp;       // addr 0x00
-    *(sp + 1); // addr 0x02
-
-    *cp;       // addr 0x00
-    *(cp + 1); // addr 0x01
-    *(cp + 2); // addr 0x02
-    *(cp + 3); // addr 0x03
-}
-
-int main() {
-    gpio_set(0);
-    la_wtest();
-    la_rtest();
-
-    uart_puts("\r\nStarting\n\r");
+    unsigned int rgb_time = 0;
+    unsigned int rgb_counter = 0;
+    unsigned int rgb_state = 0;
 
     while(1) {
-        uart_puts("Enter command:\r\n");
-        uart_puts("   e: endian test\r\n");
-        uart_puts("   g: read LED value\r\n");
-        uart_puts("   i: increment LED value\r\n");
-        uart_puts("   l: set RGB LED\r\n");
-        uart_puts("   k: get RGB LED\r\n");
-        uart_puts("   m: memory test\r\n");
-        uart_puts("   r: read clock\r\n");
+        if((timer() - rgb_time) >= 100000U) {
+            rgb_time = timer();
 
-        const char ch = uart_getc();
+            switch(rgb_state) {
+                case 0: {
+                    WS2812B0 = 0xFF0000U | (rgb_counter << 8U);
+                } break;
+                case 1: {
+                    WS2812B0 = 0x00FF00U | ((0xFFU - rgb_counter) << 16U);
+                } break;
+                case 2: {
+                    WS2812B0 = 0x00FF00U | (rgb_counter << 0U);
+                } break;
+                case 3: {
+                    WS2812B0 = 0x0000FFU | ((0xFFU - rgb_counter) << 8U);
+                } break;
+                case 4: {
+                    WS2812B0 = 0x0000FFU | (rgb_counter << 16U);
+                } break;
+                case 5: {
+                    WS2812B0 = 0xFF0000U | ((0xFFU - rgb_counter) << 0U);
+                } break;
+            }
 
-        switch(ch) {
-            case 'e': {
-                endian_test();
-            } break;
-            case 'g': {
-                uart_puts("LED = ");
-                uart_puth(gpio_get());
-                uart_puts("\r\n");
-            } break;
-            case 'i': {
-                gpio_set(gpio_get() + 1);
-            } break;
-            case 'l': {
-                uart_puts(" enter 6 hex digits: ");
-                ws2812b_set(uart_geth());
-                uart_puts("\r\n");
-            } break;
-            case 'k': {
-                uart_puts("RGB LED = ");
-                uart_puth(ws2812b_get());
-                uart_puts("\r\n");
-            } break;
-            case 'm': {
-                if(mem_test()) {
-                    uart_puts("memory test FAILED.\r\n");
-                } else {
-                    uart_puts("memory test PASSED.\r\n");
+            rgb_counter++;
+
+            if(rgb_counter == 0xFFU) {
+                rgb_state++;
+                if(rgb_state > 5) {
+                    rgb_state = 0;
                 }
-            } break;
-            case 'r': {
-                uart_puts("time is ");
-                uart_puth(readtime());
-                uart_puts("\r\n");
-            } break;
-            default: {
-                uart_puts("  Try again...\r\n");
-            } break;
+                rgb_counter = 0U;
+            }
         }
 
-        for(volatile unsigned int i=0; i<1e6; ++i) {}
+        if(UART0_STATUS & UART_STATUS_RX_READY) {
+            const char ch = UART0_RX;
+
+            switch(ch) {
+                case 'g': {
+                    print_str("LED = ");
+                    print_hex(GPIO0);
+                    print_str("\r\n");
+                } break;
+                case 'i': {
+                    GPIO0++;
+                } break;
+                case 'k': {
+                    print_str("RGB LED = ");
+                    print_hex(WS2812B0);
+                    print_str("\r\n");
+                } break;
+                case 'r': {
+                    print_str("time is ");
+                    print_hex(timer());
+                    print_str("\r\n");
+                } break;
+                default: {
+                    print_str("  Try again...\r\n");
+                } break;
+            }
+
+            print_str("Enter command:\r\n");
+            print_str("   g: read LED value\r\n");
+            print_str("   i: increment LED value\r\n");
+            print_str("   k: read RGB LED\r\n");
+            print_str("   r: read clock\r\n");
+        }
     }
 
     return 0;

@@ -95,60 +95,72 @@ module uart_receiver #(
     input wire                  resetn,
     input wire                  rx,
     output reg [DATA_BITS-1:0]  data,
-    output reg                  data_ready
+    output reg                  data_valid,
+    input wire                  data_ack
 );
 
-endmodule
+    localparam STATE_IDLE   = 2'b00;
+    localparam STATE_START  = 2'b01;
+    localparam STATE_DATA   = 2'b10;
+    localparam STATE_STOP   = 2'b11;
 
-module uart_fifo #(
-    parameter DEPTH = 1024,
-    parameter WIDTH = 8
-) (
-    input wire              clk,
-    input wire              resetn,
-    input wire [WIDTH-1:0]  in,
-    input wire              write,
-    input wire              read,
-    output wire [WIDTH-1:0] out,
-    output reg              empty,
-    output reg              full
-);
-
-    reg [WIDTH-1:0] mem [DEPTH-1:0];
-    reg [31:0]      ctn_read = 0;
-    reg [31:0]      ctn_write = 0;
-
-    assign out = mem[ctn_read];
+    reg [1:0]           state;
+    reg [DATA_BITS-1:0] data_buffer;
+    reg [31:0]          clk_counter;
+    reg [3:0]           bit_counter;
 
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            ctn_read <= 0;
-            ctn_write <= 0;
-            empty <= 1;
-            full <= 0;
+            state <= STATE_IDLE;
+            data <= 0;
+            data_buffer <= 0;
+            data_valid <= 0;
         end else begin
-            if (write) begin
-                if (!full) begin
-                    mem[ctn_write] <= in;
-                    empty <= 0;
-
-                    ctn_write <= ((ctn_write + 1) >= DEPTH) ? 0 : ctn_write + 1;
-
-                    if ((((ctn_write + 1) >= DEPTH) ? 0 : ctn_write + 1) == ctn_read)
-                        full <= 1;
-                end
+            if (data_valid && data_ack) begin
+                data_valid <= 0;
             end
 
-            if (read) begin
-                if (!empty) begin
-                    full <= 0;
-
-                    ctn_read <= ((ctn_read + 1) >= DEPTH) ? 0 : ctn_read + 1;
-
-                    if((((ctn_read + 1) >= DEPTH) ? 0 : ctn_read + 1) == ctn_write)
-                        empty <= 1;
+            case (state)
+                STATE_IDLE: begin
+                    if (!rx) begin
+                        state <= STATE_START;
+                        clk_counter <= 0;
+                    end
                 end
-            end
+                STATE_START: begin
+                    if ((clk_counter + 1) >= (BIT_DURATION/2)) begin
+                        if (!rx) begin
+                            state <= STATE_DATA;
+                            clk_counter <= 0;
+                            bit_counter <= 0;
+                            data_buffer <= 0;
+                        end else begin
+                            state <= STATE_IDLE;
+                        end
+                    end else begin
+                        clk_counter <= clk_counter + 1;
+                    end
+                end
+                STATE_DATA: begin
+                    if ((clk_counter + 1) >= BIT_DURATION) begin
+                        clk_counter <= 0;
+                        data_buffer[bit_counter] <= rx;
+                        bit_counter <= bit_counter + 1;
+
+                        if ((bit_counter + 1) >= DATA_BITS) begin
+                            state <= STATE_STOP;
+                            clk_counter <= 0;
+                        end
+                    end else begin
+                        clk_counter <= clk_counter + 1;
+                    end
+                end
+                STATE_STOP: begin
+                    state <= STATE_IDLE;
+                    data <= data_buffer;
+                    data_valid <= 1;
+                end
+            endcase
         end
     end
 
@@ -159,9 +171,7 @@ module uart #(
     parameter CLK_FREQ = 1e6,
     parameter BAUDRATE = 115200,
     parameter DATA_BITS = 8,
-    parameter STOP_BITS = 1,
-    parameter TX_FIFO = 64,
-    parameter RX_FIFO = 64
+    parameter STOP_BITS = 1
 ) (
     input wire          clk,
     input wire          resetn,
@@ -178,17 +188,14 @@ module uart #(
     localparam BIT_DURATION     = $rtoi(CLK_FREQ/BAUDRATE + 0.5);
     localparam STOP_DURATION    = $rtoi(STOP_BITS*BIT_DURATION + 0.5);
 
-    wire [DATA_BITS-1:0]    tx_data;
-    wire                    tx_data_valid;
-    wire                    tx_data_req;
-    wire                    tx_empty;
-    wire                    tx_full;
-
     wire                    select;
     wire [7:0]              address;
     wire                    write;
+    wire                    tx_ready;
+    wire [DATA_BITS-1:0]    rx_data;
+    wire                    rx_ready;
+    reg                     rx_ack;
 
-    assign tx_data_valid = ~tx_empty;
     assign select = mem_valid && ((mem_addr & 32'hFFFF_FF00) == ADDR);
     assign address = mem_addr & 32'h0000_00FF;
     assign write = |mem_wstrb;
@@ -200,32 +207,36 @@ module uart #(
     ) transmitter (
         .clk            (clk),
         .resetn         (resetn),
-        .data           (tx_data),
-        .data_valid     (tx_data_valid),
-        .data_req       (tx_data_req),
+        .data           (mem_wdata[DATA_BITS-1:0]),
+        .data_valid     (select && write && (address == 8'h04)),
+        .data_req       (tx_ready),
         .tx             (tx)
     );
 
-    uart_fifo #(
-        .DEPTH          (TX_FIFO),
-        .WIDTH          (DATA_BITS)
-    ) tx_fifo (
+    uart_receiver #(
+        .DATA_BITS      (DATA_BITS),
+        .STOP_DURATION  (STOP_DURATION),
+        .BIT_DURATION   (BIT_DURATION)
+    ) receiver (
         .clk            (clk),
         .resetn         (resetn),
-        .in             (mem_wdata[DATA_BITS-1:0]),
-        .write          (select && write && (address == 8'h04)),
-        .read           (tx_data_req),
-        .out            (tx_data),
-        .empty          (tx_empty),
-        .full           (tx_full)
+        .data           (rx_data),
+        .data_valid     (rx_ready),
+        .data_ack       (rx_ack),
+        .rx             (rx)
     );
 
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             mem_rdata <= 0;
             mem_ready <= 0;
+            rx_ack <= 0;
         end else begin
+            mem_rdata <= 0;
             mem_ready <= 0;
+
+            if (!rx_ready && rx_ack)
+                rx_ack <= 0;
 
             if (select) begin
                 if (write) begin
@@ -243,7 +254,7 @@ module uart #(
                 end else begin
                     case (address)
                         8'h00: begin
-                            mem_rdata <= {28'h0, 1'h0, 1'h0, tx_full, tx_empty};
+                            mem_rdata <= {30'h0, rx_ready, tx_ready};
                             mem_ready <= 1;
                         end
                         8'h04: begin
@@ -252,7 +263,9 @@ module uart #(
                         end
                         8'h08: begin
                             mem_rdata <= 0;
+                            mem_rdata[DATA_BITS-1:0] <= rx_data;
                             mem_ready <= 1;
+                            rx_ack <= 1;
                         end
                     endcase
                 end

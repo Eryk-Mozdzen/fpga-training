@@ -13,14 +13,14 @@ module uart_tb();
     wire        tx;
     wire        rx;
 
+    assign rx = tx;
+
     uart #(
         .ADDR           (32'h0000_0000),
         .CLK_FREQ       (100e6),
         .BAUDRATE       (115200),
         .DATA_BITS      (8),
-        .STOP_BITS      (1),
-        .TX_FIFO        (3),
-        .RX_FIFO        (3)
+        .STOP_BITS      (1)
     ) uut (
         .clk            (clk),
         .resetn         (resetn),
@@ -64,6 +64,13 @@ module uart_tb();
         mem_wstrb   = 4'b1111;
         mem_wdata   = 32'h0000_0023;
         mem_addr    = 32'h0000_0004;
+        mem_valid   = 1;
+        #10
+        mem_valid   = 0;
+
+        #100000
+        mem_wstrb   = 4'b0000;
+        mem_addr    = 32'h0000_0008;
         mem_valid   = 1;
         #10
         mem_valid   = 0;

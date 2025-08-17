@@ -8,6 +8,7 @@ module top (
 );
 
     wire        resetn;
+    wire [31:0] io;
 
     wire        mem_valid;
     wire        mem_instr;
@@ -26,7 +27,7 @@ module top (
     wire [31:0] ws2812b0_rdata;
     wire        ws2812b0_ready;
 
-    assign leds = ~gpio0_rdata[5:0];
+    assign leds = ~io[5:0];
     assign mem_ready = sram0_ready | gpio0_ready | uart0_ready | ws2812b0_ready;
     assign mem_rdata =
         sram0_ready     ? sram0_rdata :
@@ -89,7 +90,8 @@ module top (
         .mem_wstrb      (mem_wstrb),
         .mem_wdata      (mem_wdata),
         .mem_rdata      (gpio0_rdata),
-        .mem_ready      (gpio0_ready)
+        .mem_ready      (gpio0_ready),
+        .io             (io)
     );
 
     uart #(
@@ -97,9 +99,7 @@ module top (
         .CLK_FREQ       (27e6),
         .BAUDRATE       (115200),
         .DATA_BITS      (8),
-        .STOP_BITS      (1),
-        .TX_FIFO        (64),
-        .RX_FIFO        (64)
+        .STOP_BITS      (1)
     ) uart0 (
         .clk            (clk),
         .resetn         (resetn),
