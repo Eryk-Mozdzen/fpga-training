@@ -19,5 +19,5 @@ IO_PORT "uart_rx" IO_TYPE=LVCMOS33 PULL_MODE=NONE PCI_CLAMP=OFF BANK_VCCIO=3.3;
 IO_LOC "reset_button" 88;
 IO_PORT "reset_button" IO_TYPE=LVCMOS33 PULL_MODE=NONE PCI_CLAMP=OFF BANK_VCCIO=3.3;
 
-IO_LOC "clk" 4;
-CLOCK_LOC "clk" BUFG;
+IO_LOC "clk_oscillator" 4;
+CLOCK_LOC "clk_oscillator" BUFG;

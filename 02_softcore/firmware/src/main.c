@@ -51,7 +51,7 @@ int main(void) {
     unsigned int rgb_state = 0;
 
     while(1) {
-        if((timer() - rgb_time) >= 100000U) {
+        if((timer() - rgb_time) >= 1000000U) {
             rgb_time = timer();
 
             switch(rgb_state) {
