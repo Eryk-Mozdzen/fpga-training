@@ -8,7 +8,7 @@
 #define UART_STATUS_TX_READY (1U << 0U)
 #define UART_STATUS_RX_READY (1U << 1U)
 
-static inline unsigned int timer(void) {
+static inline unsigned int timer() {
     unsigned int val;
     asm volatile("rdtime %0" : "=r"(val));
     return val;
@@ -35,7 +35,7 @@ static void print_hex(unsigned int val) {
     }
 }
 
-int main(void) {
+int main() {
     GPIO0 = 0;
 
     print_str("\r\nStarting\n\r");

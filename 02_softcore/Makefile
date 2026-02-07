@@ -4,7 +4,8 @@ CST     = tangnano20k.cst
 
 SRC = \
 	src/top.v \
-	src/reset_ctrl.v \
+	src/stub/pll_stub.v \
+	src/reset.v \
 	picorv32/picorv32.v \
 	src/sram.v \
 	src/gpio.v \

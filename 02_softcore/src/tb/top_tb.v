@@ -9,7 +9,7 @@ module top_tb();
     wire [5:0]  leds;
 
     top uut (
-        .clk            (clk),
+        .clk_oscillator (clk),
         .reset_button   (reset_button),
         .uart_rx        (uart_rx),
         .uart_tx        (uart_tx),
@@ -29,14 +29,10 @@ module top_tb();
     initial begin
         clk = 1;
         reset_button = 0;
-        #10
-        reset_button = 1;
-        #100
-        reset_button = 0;
     end
 
     always begin
-        #5
+        #1
         clk = ~clk;
     end
 
